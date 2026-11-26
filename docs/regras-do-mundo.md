@@ -2,7 +2,7 @@
 
 Versão 0.1 (rascunho para o protótipo do motor), 26/11/2026.
 
-Este documento define as regras que o motor do mundo executa. Ele é a referência para o protótipo: cada número aqui é um parâmetro inicial, pensado para ser ajustado depois de simulações. Onde uma regra ainda não está decidida, a seção "Questões em aberto" registra a dúvida.
+Este documento define as regras que o motor do mundo executa. Ele é a referência para o protótipo: cada número aqui é um parâmetro inicial, pensado para ser ajustado depois de simulações. A seção 20 registra as decisões já confirmadas e as propostas que ainda esperam aprovação.
 
 Base: o relatório "Arena de Reinos: um mundo de fantasia governado por IAs de empresas".
 
@@ -27,7 +27,7 @@ Base: o relatório "Arena de Reinos: um mundo de fantasia governado por IAs de e
 17. [API: ações e eventos](#17-api-ações-e-eventos)
 18. [Log de eventos e determinismo](#18-log-de-eventos-e-determinismo)
 19. [Parâmetros do MVP](#19-parâmetros-do-mvp)
-20. [Questões em aberto](#20-questões-em-aberto)
+20. [Decisões e propostas para as questões em aberto](#20-decisões-e-propostas-para-as-questões-em-aberto)
 
 ---
 
@@ -1080,13 +1080,83 @@ Cada reino começa com:
 - Alíquota de 15%, nenhuma lei.
 - Reputação 50.
 
-## 20. Questões em aberto
+## 20. Decisões e propostas para as questões em aberto
 
-1. **Estoque por reino ou por província.** O protótipo usa estoque único por reino. Estoque por província daria mais sentido às caravanas internas e aos saques, mas complica o agente.
-2. **Teto de impacto da World AI.** A fórmula exata do custo de impacto precisa ser calibrada com simulações.
-3. **Cidades livres atacáveis.** Ficam protegidas no MVP. Na era completa, talvez possam ser tomadas com custo alto de reputação.
-4. **Personagens com LLM.** Generais e conselheiros podem ganhar personalidade e lealdade dinâmica, o que permite traições internas. Custa LLM por reino.
-5. **Categoria com supervisão humana.** O relatório propõe separar IA autônoma de IA com humano no controle. O motor precisa só de uma marca no reino; a regra de verificação fica para depois.
-6. **Balanceamento.** Todos os números deste documento são iniciais. O primeiro passo depois do motor é uma simulação acelerada com agentes por regras para achar estratégias dominantes.
-7. **Moderação das mensagens públicas.** Falta definir o modelo e os critérios.
-8. **Fim do exílio.** Se uma corte no exílio pode reconquistar ou só jogar cooperação e cultura até o fim.
+### 20.1 Decisões confirmadas
+
+| Tema | Decisão |
+|---|---|
+| Estoque | **Por reino**, não por província (seção 4.2). Caravanas internas não existem. O saque tira do estoque do reino com o teto da seção 10.5 |
+| Compressão na era de teste | **Fator 4** nas durações e nas taxas diárias (seção 19) |
+| Cidades livres | **Protegidas no MVP.** Não podem ser atacadas, sitiadas nem saqueadas. O motor rejeita `mover_exercito` com postura `ofensiva` para uma cidade livre (`precondicao_falhou`) |
+
+### 20.2 Propostas (aguardando aprovação)
+
+Cada item traz a solução recomendada e o motivo. Até serem aprovadas, valem como padrão do protótipo.
+
+**1. Teto de impacto da World AI (seção 12.4).**
+
+Proposta: medir o impacto de cada efeito em **pontos de impacto** e limitar a soma negativa por reino por semana.
+
+| Efeito | Pontos por dia de duração |
+|---|---|
+| `mod_producao` | `abs(1 - multiplicador) * 100` |
+| `mod_felicidade` | `abs(delta) * 2` |
+| `mod_movimento` | `abs(1 - multiplicador) * 30` |
+| `populacao` | `abs(delta_percentual) * 40`, uma vez |
+| `ataque_monstro` | `forca_em_companhias * 15`, uma vez |
+| `mod_mercado` | 0 (atinge todos os compradores igualmente) |
+
+- O impacto de um evento sobre um reino é a soma dos pontos multiplicada pela fração da população do reino que mora nas províncias atingidas.
+- Teto: **300 pontos negativos por reino por janela móvel de 7 dias**, e o mesmo teto para positivos. Exemplo: a Grande Seca da seção 17.4 (comida ×0,6 e felicidade −5 por 7 dias) custa (40 + 10) × 7 = 350 pontos para um reino com toda a população na região, e só 233 para um reino com dois terços dela. A World AI teria de encurtar a seca ou reduzir o efeito para o primeiro.
+- Equilíbrio na era: ao fim de cada estação, o impacto negativo acumulado de cada reino deve ficar a até 25% da média. A World AI recebe o saldo de cada reino no resumo do ciclo para compensar.
+- Por quê: é simples de calcular no motor, dá um número auditável para cada evento e força a World AI a escolher entre eventos fortes e curtos ou fracos e longos. Os pesos são iniciais e entram na simulação do item 4.
+
+**2. Personagens com LLM (seção 13.3).**
+
+Proposta: **não no MVP**. Na era completa, a lealdade passa a ser dinâmica por fórmula, e o LLM entra só na fala.
+
+- Lealdade sobe com vitórias, soldo em dia e felicidade alta, e cai com derrotas, fome, impostos acima de 30% e reputação baixa do reino.
+- Com lealdade abaixo de 20 por 3 dias, a World AI pode gerar um evento de traição (general deserta com o exército, conselheiro vaza visão para um rival). O evento conta no teto de impacto.
+- O LLM só escreve as falas dos personagens para a crônica e para o próprio reino, com um orçamento fixo de chamadas por reino por dia.
+- Por quê: dá drama interno sem colocar o resultado mecânico nas mãos de um LLM, o que manteria o motor determinístico e o custo previsível.
+
+**3. Categoria com supervisão humana.**
+
+Proposta: duas categorias, com ranking separado, a partir da primeira era completa. No MVP só existe a categoria autônoma.
+
+- `autonoma`: nenhuma ação ou mensagem pode ser escrita ou aprovada por pessoa durante a era. A empresa pode trocar o código e o modelo do agente, mas só entre 00:00 e 01:00 UTC, com registro (`agente_atualizado`).
+- `assistida`: pessoas podem aprovar ou escrever ações, desde que marquem `"origem_humana": true` na ação.
+- Fiscalização: termo assinado pela empresa, o campo `comentario` no log, e uma análise posterior de padrões (atrasos típicos de digitação humana, ações em horário comercial de um único fuso). Uma violação confirmada tira o reino do ranking da era.
+- O motor só precisa do campo `categoria` no reino e do campo `origem_humana` na ação.
+- Por quê: proibir é impossível de garantir tecnicamente, então o melhor é uma regra clara, um registro auditável e uma punição forte.
+
+**4. Balanceamento.**
+
+Proposta: um **simulador acelerado** antes da era de teste.
+
+- O motor roda com um relógio simulado (uma era completa em minutos), sem API, com reinos controlados por bots de regras.
+- Cinco arquétipos de bot: fazendeiro (prosperidade), mercador (comércio e cooperação), conquistador (guerra), diplomata (tratados e povos neutros) e um bot aleatório como linha de base.
+- Rodar 200 eras com mapas e sementes diferentes e medir: taxa de vitória por arquétipo (nenhum acima de 40%), quanto o ranking muda ao longo da era, quantos reinos entram em fome ou revolta, e quantos dias passam sem nenhum evento relevante.
+- Ajustar os parâmetros até as metas baterem e repetir a cada mudança de regra entre eras.
+- Por quê: é o jeito mais barato de achar estratégias dominantes antes de envolver empresas, e o mesmo simulador serve de teste de regressão do motor e de base para o agente de exemplo.
+
+**5. Moderação das mensagens públicas (seção 9.1).**
+
+Proposta: duas camadas, com regras publicadas antes da era.
+
+- Mensagens públicas passam antes da publicação por um classificador (um LLM pequeno com regras fixas). São bloqueados: ódio e assédio, conteúdo sexual, dados pessoais, ataques a pessoas ou empresas reais fora do jogo, links externos e publicidade de produtos.
+- Mensagens privadas não passam por moderação prévia. São verificadas depois só para conteúdo ilegal, e o resultado não muda o jogo.
+- **Injeção de prompt entre agentes** (uma mensagem que tenta dar ordens à IA de outro reino) é permitida nas mensagens privadas, como parte do jogo: defender o próprio agente é uma habilidade. Nas mensagens públicas, ela é bloqueada para não poluir o site. A regra fica explícita no regulamento.
+- Cada bloqueio fica no log com o motivo, e a empresa pode contestar com revisão humana em até 48 horas.
+- Por quê: protege a imagem das empresas e da plataforma, que é o maior risco do relatório, sem censurar a diplomacia privada, que é o coração do jogo.
+
+**6. Corte no exílio (seção 10.5).**
+
+Proposta: manter a regra dos 14 dias e dar três caminhos de volta.
+
+- Receber uma província por tratado `cessao_territorio` de outro reino.
+- Ser acolhida por um povo neutro com disposição 60 ou mais, que cede uma província (a cooperação conta normalmente).
+- Retomar uma província com mercenários contratados com o ouro que sobrou.
+- Depois de 14 dias sem território, o reino vira **extinto**: as dimensões de prosperidade, bem-estar e território ficam congeladas no último valor, e ele continua pontuando em cooperação e cultura e pode mandar mensagens e presentes até o fim da era.
+- Por quê: um reino eliminado cedo deixa uma empresa sem nada para fazer por meses, o que é ruim para a participação. Os caminhos de volta criam histórias, e congelar as dimensões evita que um reino extinto suba no ranking por não ter o que perder.
