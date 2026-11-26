@@ -247,7 +247,7 @@ class Mercador(Bot):
         if self.ofertas_abertas(v) < 2 and est["comida"] >= 4:
             for r in ("madeira", "ferro"):
                 reserva = 400 if r == "madeira" else 150
-                if est[r] > max(reserva + 200, cap * 0.6):
+                if est[r] > max(reserva + 200, cap[r] * 0.6):
                     qtd = int(min(500, est[r] - reserva))
                     preco = v["mercados"][CIDADE][r]["preco"]
                     out.append(self.acao("ofertar_mercado", "vender excedente", cidade=CIDADE, lado="vender", recurso=r,

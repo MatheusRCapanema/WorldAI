@@ -38,6 +38,17 @@ def _carga(c) -> dict:
     return carga
 
 
+def _custo_viagem(m, reino, rota, carga) -> dict:
+    """20 madeira + 1 comida por trecho. Se a comida não cobre (além da carga),
+    paga 2 ouro por trecho no lugar (regras 0.2: evita o impasse de não poder
+    comprar comida por falta de comida)."""
+    est = m.estado["reinos"][reino]["estoque"]
+    trechos = len(rota)
+    if est["comida"] - carga.get("comida", 0) >= trechos:
+        return {"madeira": 20, "comida": trechos}
+    return {"madeira": 20, "ouro": trechos * m.params.ouro_por_trecho_sem_comida}
+
+
 def _somar(a: dict, b: dict) -> dict:
     out = dict(a)
     for k, v in b.items():
@@ -58,7 +69,7 @@ def _v_caravana(m, reino, p):
     exigir(prov is not None and prov["dono"] in estado["reinos"] and prov["dono"] != reino, "destino precisa ser província de outro reino")
     carga = _carga(p["carga"])
     rota, total = _rota_caravana(m, reino, origem, destino)
-    custos = _somar(carga, {"madeira": 20, "comida": len(rota)})
+    custos = _somar(carga, _custo_viagem(m, reino, rota, carga))
     car = m.novo_id("car", "car")
 
     def depois(m, ev):
@@ -116,7 +127,7 @@ def _chegou(estado, ev):
     para = d["para"] if ev["tipo"] == "caravana_chegou" else d["reino"]
     est = estado["reinos"][para]["estoque"]
     for k, v in d["carga"].items():
-        est[k] = r3(est[k] + v if k == "ouro" else min(d["capacidade"], est[k] + v))
+        est[k] = r3(est[k] + v if k == "ouro" else min(d["capacidade"][k], est[k] + v))
 
 
 # ---------------------------------------------------------------- mercado
@@ -169,7 +180,7 @@ def _v_ofertar(m, reino, p):
         carga = {recurso: float(q)}
     else:
         carga = {"ouro": r3(q * limite)}
-    custos = _somar(carga, {"madeira": 20, "comida": len(rota)})
+    custos = _somar(carga, _custo_viagem(m, reino, rota, carga))
     car = m.novo_id("car", "car")
     ofe = m.novo_id("ofe", "ofe")
 

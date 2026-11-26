@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-VERSAO_REGRAS = "0.1"
+VERSAO_REGRAS = "0.2"
 
 RECURSOS = ("comida", "madeira", "ferro", "ouro")  # éter desligado no MVP (seção 11)
 
@@ -26,7 +26,7 @@ MULT_JAZIDA = {0: 0.0, 1: 1.0, 2: 1.5, 3: 2.0}
 
 # Seção 2.2: estações.
 ESTACOES = ("primavera", "verao", "outono", "inverno")
-MULT_COLHEITA_ESTACAO = {"primavera": 1.0, "verao": 1.2, "outono": 1.0, "inverno": 0.4}
+MULT_COLHEITA_ESTACAO = {"primavera": 1.0, "verao": 1.2, "outono": 1.0, "inverno": 0.7}  # inverno 0,4 -> 0,7 (regras 0.2)
 MULT_CRESCIMENTO_ESTACAO = {"primavera": 1.5, "verao": 1.0, "outono": 1.0, "inverno": 1.0}
 
 # Seção 5.2: setores.
@@ -144,6 +144,9 @@ class Parametros:
     mensagens_por_dia: int = 50
     estoque_base: int = 2000
     estoque_por_armazem: int = 1000
+    estoque_por_celeiro: int = 1000  # só comida (regras 0.2)
+    dias_comida_crescimento: int = 3  # era 7 (regras 0.2)
+    ouro_por_trecho_sem_comida: int = 2  # caravana sem comida paga em ouro (regras 0.2)
     capacidade_moradia_base: int = 3000
     capacidade_por_moradia: int = 1500
     inicio_estoque: dict = field(
@@ -172,6 +175,9 @@ class Parametros:
             "mensagens_por_dia": self.mensagens_por_dia,
             "estoque_base": self.estoque_base,
             "estoque_por_armazem": self.estoque_por_armazem,
+            "estoque_por_celeiro": self.estoque_por_celeiro,
+            "dias_comida_crescimento": self.dias_comida_crescimento,
+            "ouro_por_trecho_sem_comida": self.ouro_por_trecho_sem_comida,
             "capacidade_moradia_base": self.capacidade_moradia_base,
             "capacidade_por_moradia": self.capacidade_por_moradia,
             "inicio_estoque": dict(self.inicio_estoque),

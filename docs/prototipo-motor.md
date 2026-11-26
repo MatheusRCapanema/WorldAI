@@ -1,6 +1,6 @@
 # Protótipo do motor do mundo
 
-Versão 0.1, 26/11/2026. Segue as regras de [`regras-do-mundo.md`](regras-do-mundo.md) (versão 0.1).
+Versão 0.2, 26/11/2026. Segue as regras de [`regras-do-mundo.md`](regras-do-mundo.md) (versão 0.2).
 
 Este documento explica como rodar o protótipo, como ele está organizado, o que ficou simplificado ou de fora e o que as primeiras simulações mostraram sobre o balanceamento.
 
@@ -123,9 +123,11 @@ Onde o documento deixa margem, o protótipo seguiu estas leituras. Todas estão 
 - **Redis.** O documento já diz que o Redis não é fonte de verdade. No protótipo, a agenda vive no estado, a cota é contada pelo motor e o limite de taxa fica em memória. O Redis entra junto com o WebSocket e com mais de um processo de API.
 - Os bots guardam a própria memória em processo. Ao reiniciar o servidor, o mundo volta igual pelo log, mas os bots recomeçam do zero e podem repetir propostas.
 
-## O que as primeiras simulações mostraram
+## O que o simulador mostrou
 
-Rodei a era de teste completa (28 dias, fator 4) com as sementes 1, 2, 3 e 42. O replay deu idêntico em todas. Os números abaixo são horas de tick com mais de 50% de fome (de 168 horas por estação):
+### Rodada 1 (regras 0.1)
+
+Era de teste completa (28 dias, fator 4), sementes 1, 2, 3 e 42, replay idêntico em todas. Horas de tick com mais de 50% de fome (de 168 horas por estação):
 
 | Reino | Primavera | Verão | Outono | Inverno |
 |---|---|---|---|---|
@@ -133,13 +135,19 @@ Rodei a era de teste completa (28 dias, fator 4) com as sementes 1, 2, 3 e 42. O
 | Vel (mercador) | 50 a 58 | 5 a 28 | 3 a 12 | 90 a 106 |
 | Dornas (conquistador) | 49 a 53 | 42 a 43 | 7 a 41 | 105 a 108 |
 
-Houve 6 ou 7 revoltas por era, e o conquistador anexou 1 província de Vel em todas as sementes. O fazendeiro ficou em primeiro nas quatro, mas com um mapa fixo e só três bots isso ainda não diz nada sobre equilíbrio de arquétipos.
+Houve 6 ou 7 revoltas por era. As causas estavam nas regras: a primeira colheita chegava depois de o estoque inicial acabar, o inverno a 40% era inviável com o teto de estoque, o crescimento exigia mais comida do que cabia no estoque, e sem comida não dava para mandar a caravana que compraria comida.
 
-Os bots são simples, mas a fome aparece para todos e por causas que estão nas regras, não nos bots:
+### Rodada 2 (regras 0.2)
 
-1. **Fome na largada.** A primeira colheita só chega com 42 horas, e o estoque inicial de 2.000 comida cobre umas 18 horas de consumo (6.800 bocas, cerca de 2.700 comida por dia com o fator 4). Todo reino passa umas 24 horas com fome antes da primeira safra. Uma saída simples é desencontrar o início das safras (cada província começa num ponto diferente do ciclo) ou começar com mais comida.
-2. **O inverno é inviável.** Com colheita a 40%, a produção cai para cerca de 1.150 comida por dia contra 2.700 de consumo. Seriam uns 10.000 de comida guardados para atravessar a estação, mas o teto do estoque é 2.000 mais 1.000 por armazém. Opções: colheita de inverno maior (por exemplo 70%), celeiro que também aumente o teto de comida, ou um consumo menor no inverno.
-3. **O crescimento quase nunca acontece.** A regra pede comida para 7 dias em estoque, ou seja, umas 4.550 comida para 6.500 pessoas, acima do teto de 2.000. Sem 3 armazéns, nenhum reino cresce.
-4. **Impasse da caravana.** Comprar comida no mercado exige caravana, e a caravana custa 1 comida por trecho. Com o estoque de comida zerado, o reino não consegue comprar comida. Vale isentar a caravana de compra de comida ou cobrar esse custo em ouro.
+Com os ajustes da seção 20.3 das regras (safras desencontradas, inverno a 70%, celeiro com +1.000 de comida, crescimento com 3 dias de comida, caravana paga em ouro quando falta comida), nas mesmas sementes:
 
-Esses quatro pontos são de balanceamento, não de motor. Ficam como proposta para a próxima revisão do documento de regras, e o simulador já serve para testar cada ajuste.
+| Medida | Rodada 1 | Rodada 2 |
+|---|---|---|
+| Horas com mais de 50% de fome por reino na era | 160 a 240 | 0 a 16 (só no inverno, quase todas no conquistador) |
+| Revoltas por era | 6 a 7 | 1 |
+| População ao fim da era (começa com 6.500) | 4.150 a 7.000 | 6.300 a 10.800 |
+| Felicidade média ao fim | 0 a 32 | 35 a 44 |
+| Vencedor | fazendeiro nas 4 | conquistador nas 4 |
+| Replay idêntico | sim | sim |
+
+O próximo ponto a observar é o conquistador vencendo sempre, com a anexação de 1 província do mercador. Com mapa fixo e só três bots isso ainda não prova uma estratégia dominante. Para medir de verdade, falta o gerador de mapas e os outros dois arquétipos (diplomata e aleatório), para rodar as 200 eras da seção 20.2.

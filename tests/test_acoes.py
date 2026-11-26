@@ -47,9 +47,9 @@ def test_construcao_conclui_no_prazo_e_aumenta_capacidade(motor):
     r = ok(m, "reino_a", acao("construir", provincia="prov_a1", construcao="armazem"))
     assert r["conclusao_prevista"] == "2026-12-01T06:00:00.000Z"  # 1 dia / fator 4
     m.avancar_ate(INICIO + 6 * HORA - 1)
-    assert capacidade(m.estado, "reino_a", m.params) == 2000
+    assert capacidade(m.estado, "reino_a", m.params)["madeira"] == 2000
     m.avancar_ate(INICIO + 6 * HORA)
-    assert capacidade(m.estado, "reino_a", m.params) == 3000
+    assert capacidade(m.estado, "reino_a", m.params)["madeira"] == 3000
     assert eventos(m, "construcao_concluida")
 
 

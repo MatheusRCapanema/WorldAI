@@ -153,6 +153,17 @@ def criar_estado_inicial(semente: int, inicio: int, params: Parametros) -> dict:
         trechos.append({"a": wid, "b": f"prov_{prox}2", "tipo": "trilha"})
         trechos.append({"a": wid, "b": cid, "tipo": "trilha"})
 
+    # Safras desencontradas (regras 0.2): a capital começa com 70% do ciclo
+    # andado, a floresta com 45% e a colina com 20%, para a primeira colheita
+    # não chegar só depois que o estoque inicial acabou.
+    for p in provincias.values():
+        if p["tipo"] != "reino":
+            continue
+        frac = 0.70 if p["capital"] else (0.45 if p["bioma"] == "floresta" else 0.20)
+        horas = int(params.horas_safra * frac)
+        agric = p["populacao"] * ALOCACAO_PADRAO["agricultura"] / 100
+        p["safra"] = {"inicio": inicio - horas * 3_600_000, "soma": round(agric * horas, 3), "horas": horas}
+
     for p in provincias.values():
         p["valor_terra"] = valor_terra(p) if p["tipo"] == "reino" else 0.0
         if p["tipo"] != "reino":

@@ -73,3 +73,24 @@ def test_venda_no_mercado_ida_e_volta(motor):
     assert m.estado["mercados"]["cid_portolivre"]["madeira"]["E"] > 10000
     assert eventos(m, "oferta_retornou")
     assert m.estado["reinos"]["reino_a"]["estoque"]["ouro"] > ouro
+
+
+def test_caravana_sem_comida_paga_em_ouro():
+    """Regras 0.2: sem comida para a viagem, a caravana cobra 2 ouro por trecho."""
+    from arena.motor import Motor
+    from arena.regras import Parametros
+
+    m = Motor.nova_era(7, INICIO, Parametros(inicio_estoque={"comida": 0.0, "madeira": 600.0, "ferro": 150.0, "ouro": 800.0}))
+    r = ok(m, "reino_a", acao("ofertar_mercado", cidade="cid_portolivre", lado="comprar", recurso="comida", quantidade=200, preco_limite=1.0))
+    # a1 -> a3 -> wa -> Porto Livre: 3 trechos
+    assert r["custos"] == {"ouro": 200 + 6, "madeira": 20}
+
+
+def test_celeiro_aumenta_teto_de_comida(motor_farto):
+    from arena.economia import capacidade
+
+    m = motor_farto
+    ok(m, "reino_a", acao("construir", provincia="prov_a1", construcao="celeiro"))
+    m.avancar_ate(INICIO + 6 * HORA)
+    cap = capacidade(m.estado, "reino_a", m.params)
+    assert cap["comida"] == cap["madeira"] + 1000

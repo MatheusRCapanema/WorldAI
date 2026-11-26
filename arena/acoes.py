@@ -492,7 +492,7 @@ def _presente(estado, ev):
     para = [r for r in ev["visivel_para"] if r != d["de"]][0]
     est = estado["reinos"][para]["estoque"]
     for k, v in d["recursos"].items():
-        est[k] = r3(est[k] + v if k == "ouro" else min(d["capacidade"], est[k] + v))
+        est[k] = r3(est[k] + v if k == "ouro" else min(d["capacidade"][k], est[k] + v))
 
 
 # ---------------------------------------------------------------- leitura para outros módulos

@@ -48,9 +48,13 @@ def nivel_ativo(prov: dict, tipo: str) -> int:
     return sum(c["nivel"] for c in prov["construcoes"].values() if c["tipo"] == tipo and c["ativa"] and c["obra_ate"] is None)
 
 
-def capacidade(estado: dict, reino: str, params) -> int:
-    armazens = sum(nivel_ativo(p, "armazem") for p in provincias_do_reino(estado, reino))
-    return params.estoque_base + params.estoque_por_armazem * armazens
+def capacidade(estado: dict, reino: str, params) -> dict:
+    """Teto de estoque por recurso (seção 4.2). O celeiro soma 1.000 só para comida (regras 0.2)."""
+    provs = provincias_do_reino(estado, reino)
+    armazens = sum(nivel_ativo(p, "armazem") for p in provs)
+    celeiros = sum(nivel_ativo(p, "celeiro") for p in provs)
+    base = params.estoque_base + params.estoque_por_armazem * armazens
+    return {"comida": base + params.estoque_por_celeiro * celeiros, "madeira": base, "ferro": base}
 
 
 def capacidade_moradia(prov: dict, params) -> int:
@@ -241,9 +245,9 @@ def tick_economico(m) -> None:
         cap = capacidade(estado, rid, params)
         transbordou = {}
         for r in ("comida", "madeira", "ferro"):
-            if est[r] > cap:
-                transbordou[r] = r3(est[r] - cap)
-                est[r] = cap
+            if est[r] > cap[r]:
+                transbordou[r] = r3(est[r] - cap[r])
+                est[r] = cap[r]
         est = {r: r3(max(0.0, v)) for r, v in est.items()}
 
         fome_hist = (reino["fome_hist"] + [r3(deficits["comida"])])[-24:]
@@ -268,7 +272,7 @@ def tick_economico(m) -> None:
             pop = p["populacao"]
             if fome_prolongada:
                 pop *= 1 - 0.01 * por_tick
-            elif nova >= 40 and estoque_comida_dias >= 7 and pop < capacidade_moradia(p, params):
+            elif nova >= 40 and estoque_comida_dias >= params.dias_comida_crescimento and fome < 0.05 and pop < capacidade_moradia(p, params):
                 mult = MULT_CRESCIMENTO_ESTACAO[estacao] * (1.5 if nova >= 80 else 1.0)
                 pop = min(capacidade_moradia(p, params), pop * (1 + 0.004 * por_tick * mult))
             baixa = p["baixa_desde"]

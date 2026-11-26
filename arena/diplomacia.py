@@ -276,7 +276,7 @@ def _pagou(estado, ev):
     for k, v in d["pago"].items():
         de[k] = r3(de[k] - v)
     for k, v in d["recebido"].items():
-        para[k] = r3(para[k] + v if k == "ouro" else min(d["capacidade_para"], para[k] + v))
+        para[k] = r3(para[k] + v if k == "ouro" else min(d["capacidade_para"][k], para[k] + v))
     estado["tratados"][d["tratado"]]["pagamentos"] += 1
 
 

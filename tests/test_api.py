@@ -60,7 +60,7 @@ def test_estado_mundo_regras_cota(cliente):
     assert cliente.get("/v1/cota", headers=A).json()["ordens"] == 200
     mundo = cliente.get("/v1/mundo").json()
     assert len(mundo["reinos"]) == 3
-    assert cliente.get("/v1/regras").json()["versao"] == "0.1"
+    assert cliente.get("/v1/regras").json()["versao"] == "0.2"
 
 
 def test_bots_e_verificacao_do_log(cliente):

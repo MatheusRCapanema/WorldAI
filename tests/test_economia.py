@@ -16,12 +16,18 @@ def test_primeira_colheita_bate_com_a_formula(motor_farto):
     assert 1209.6 <= colheitas["prov_a2"] <= 1209.6 * 1.05
 
 
-def test_safra_dura_42_horas_na_era_de_teste(motor_farto):
-    assert motor_farto.params.horas_safra == 42
-    motor_farto.avancar_ate(INICIO + 41 * HORA)
-    assert not eventos(motor_farto, "safra_colhida")
-    motor_farto.avancar_ate(INICIO + 42 * HORA)
-    assert len(eventos(motor_farto, "safra_colhida")) == 9
+def test_safras_desencontradas_e_ciclo_de_42_horas(motor_farto):
+    m = motor_farto
+    assert m.params.horas_safra == 42
+
+    def colhidas(pid):
+        return [e["ocorrido_em"] for e in eventos(m, "safra_colhida") if e["dados"]["provincia"] == pid]
+
+    m.avancar_ate(INICIO + 100 * HORA)
+    # capital começa com 70% do ciclo (29 h), floresta 45% (18 h), colina 20% (8 h)
+    assert colhidas("prov_a1")[:2] == [INICIO + 13 * HORA, INICIO + 55 * HORA]
+    assert colhidas("prov_a2")[0] == INICIO + 24 * HORA
+    assert colhidas("prov_a3")[0] == INICIO + 34 * HORA
 
 
 def test_consumo_de_comida_por_hora(motor):
@@ -34,9 +40,12 @@ def test_consumo_de_comida_por_hora(motor):
     assert abs(tick["dados"]["estoque"]["comida"] - esperado) < 0.01
 
 
-def test_fome_derruba_felicidade(motor):
-    m = motor
-    m.avancar_ate(INICIO + 36 * HORA)
+def test_fome_derruba_felicidade():
+    from arena.motor import Motor
+    from arena.regras import Parametros
+
+    m = Motor.nova_era(7, INICIO, Parametros(inicio_estoque={"comida": 0.0, "madeira": 600.0, "ferro": 150.0, "ouro": 800.0}))
+    m.avancar_ate(INICIO + 12 * HORA)
     p = m.estado["provincias"]["prov_a1"]
     assert m.estado["reinos"]["reino_a"]["estoque"]["comida"] == 0
     assert p["felicidade"] < 40
