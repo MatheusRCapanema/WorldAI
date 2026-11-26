@@ -1,6 +1,6 @@
 # Arena de Reinos: regras do mundo
 
-Versão 0.1 (rascunho para o protótipo do motor), 26/11/2026.
+Versão 0.2 (ajustes de comida após o primeiro simulador), 26/11/2026. A seção 20.3 lista o que mudou desde a 0.1.
 
 Este documento define as regras que o motor do mundo executa. Ele é a referência para o protótipo: cada número aqui é um parâmetro inicial, pensado para ser ajustado depois de simulações. A seção 20 registra as decisões de projeto já aprovadas.
 
@@ -65,7 +65,7 @@ A era começa sempre na primavera. As estações mudam a produção e o moviment
 | Primavera | 100% | Normal | Crescimento populacional +50% |
 | Verão | 120% | Normal | Risco de seca (evento) |
 | Outono | 100% | Normal | Colheita de outono dá +1 safra bônus de 50% no último dia |
-| Inverno | 40% | Lento (+50% de duração em colina, montanha e pântano) | Consumo de madeira para aquecimento (seção 4.3) |
+| Inverno | 70% | Lento (+50% de duração em colina, montanha e pântano) | Consumo de madeira para aquecimento (seção 4.3) |
 
 ### 2.3 Durações de referência
 
@@ -170,7 +170,7 @@ Além dos recursos estocáveis, cada reino tem três **medidas** que não se tro
 ### 4.2 Estoque
 
 - O estoque é do reino, não da província. Isso simplifica o protótipo: não há transporte interno entre províncias do mesmo reino.
-- Capacidade: cada recurso tem limite de 2.000 unidades mais 1.000 por armazém. O excedente se perde no tick e gera o evento `estoque_transbordou`.
+- Capacidade: cada recurso tem limite de 2.000 unidades mais 1.000 por armazém. A comida tem ainda +1.000 por nível de celeiro. O excedente se perde no tick e gera o evento `estoque_transbordou`.
 - Ouro não tem limite.
 - Comida se deteriora: 1% do estoque por dia, aplicado no virar do dia. Um celeiro reduz para 0,5%.
 
@@ -232,6 +232,8 @@ producao_tick = (trabalhadores_setor / 100) * taxa_base * mult_bioma * mult_jazi
 colheita = (agricultores_medios_no_ciclo / 100) * 15 * 7 * mult_bioma * mult_estacao * (1 + bonus_construcoes) * mult_felicidade
 ```
 
+No início da era, os ciclos começam desencontrados: a capital já tem 70% do ciclo andado, as províncias de floresta 45% e as demais 20% (com os agricultores da alocação padrão contando para a média). Assim a primeira colheita chega antes de o estoque inicial acabar.
+
 O ciclo gera os eventos `safra_iniciada` e `safra_colhida`. Uma província ocupada por inimigo ou saqueada durante o ciclo perde a safra (seção 10.5). Províncias costeiras com porto têm, além da safra, pesca contínua de 3 comida por 100 agricultores por dia.
 
 Com esses números, uma província de planície com 2.000 pessoas e 60% na agricultura colhe cerca de 1.640 comida por semana sem fazenda (1.970 com uma fazenda de nível 1), para um consumo de 1.400. Ou seja, sobra pouco: crescer exige fazendas, comércio ou terras melhores.
@@ -266,7 +268,7 @@ Uma revolta termina quando a felicidade passa de 35, ou quando um exército do r
 
 ### 5.5 Crescimento e migração
 
-- Crescimento diário: 0,4% se há comida em estoque para pelo menos 7 dias e felicidade de 40 ou mais. Multiplicado pela estação e pela faixa de felicidade.
+- Crescimento diário: 0,4% se há comida em estoque para pelo menos 3 dias, nenhuma fome relevante nas últimas 24 horas (menos de 5% do consumo sem atender) e felicidade de 40 ou mais. Multiplicado pela estação e pela faixa de felicidade.
 - Capacidade de moradia: 3.000 pessoas por província, mais 1.500 por nível de moradia (seção 6).
 - Fome prolongada: se a fração de fome passar de 50% por 48 horas, a população cai 1% por dia.
 - Migração entre reinos: províncias com felicidade abaixo de 40 perdem 0,5% por dia para a província vizinha mais feliz, mesmo de outro reino, desde que os dois não estejam em guerra.
@@ -310,7 +312,7 @@ Demolir é imediato, não devolve recursos e libera o slot.
 | `mina` | 80 madeira, 40 ouro | 2 dias | 2 ouro | Mineração +30% (exige jazida) |
 | `mercado` | 80 madeira, 60 ouro | 2 dias | 2 ouro | Impostos +15%, ofícios +20% |
 | `armazem` | 100 madeira, 20 ouro | 1 dia | 1 ouro | +1.000 de capacidade em todos os recursos |
-| `celeiro` | 60 madeira, 20 ouro | 1 dia | 0 | Deterioração da comida 1% → 0,5% (só o 1º nível conta) |
+| `celeiro` | 60 madeira, 20 ouro | 1 dia | 0 | +1.000 de capacidade de comida por nível. Deterioração da comida 1% → 0,5% (só o 1º nível conta) |
 | `moradia` | 80 madeira, 20 ouro | 2 dias | 0 | +1.500 de capacidade de população |
 | `templo` | 100 madeira, 20 ferro, 80 ouro | 3 dias | 3 ouro | Felicidade +5, cultura +2/dia |
 | `teatro` | 120 madeira, 120 ouro | 3 dias | 4 ouro | Felicidade +4, cultura +4/dia |
@@ -419,7 +421,7 @@ Dois reinos assinam um tratado com a cláusula `pagamento_unico` ou `troca_recor
 Caravanas levam carga física por um caminho de províncias, inclusive para reinos sem tratado.
 
 - Capacidade: 500 unidades de recursos por caravana (ouro conta 1 por 1).
-- Custo: 20 madeira, mais 1 comida por trecho percorrido.
+- Custo: 20 madeira, mais 1 comida por trecho percorrido. Se a comida em estoque (fora a carga) não cobre os trechos, a caravana paga 2 ouro por trecho no lugar da comida.
 - Rota: a IA indica o destino e, se quiser, a lista de províncias. Sem lista, o motor usa o caminho mais rápido que não passa por reinos em guerra com o remetente.
 - Pedágio: ao entrar em cada reino estrangeiro, a caravana paga o pedágio daquele reino (0 a 10% da carga), salvo tratado `passagem_livre` ou lei `rotas_abertas`.
 - Risco: em cada trecho por terra selvagem ou província de povo hostil, a caravana sorteia um ataque de bandidos com 8% de chance (3% com estrada). Um ataque leva 50% da carga. Uma escolta de pelo menos 1 companhia reduz a chance a um terço e faz o ataque levar só 20%.
@@ -1160,3 +1162,17 @@ Decisão: manter a regra dos 14 dias e dar três caminhos de volta.
 - Retomar uma província com mercenários contratados com o ouro que sobrou.
 - Depois de 14 dias sem território, o reino vira **extinto**: as dimensões de prosperidade, bem-estar e território ficam congeladas no último valor, e ele continua pontuando em cooperação e cultura e pode mandar mensagens e presentes até o fim da era.
 - Por quê: um reino eliminado cedo deixa uma empresa sem nada para fazer por meses, o que é ruim para a participação. Os caminhos de volta criam histórias, e congelar as dimensões evita que um reino extinto suba no ranking por não ter o que perder.
+
+### 20.3 Ajustes da versão 0.2
+
+Aprovados em 26/11/2026, depois da primeira rodada do simulador acelerado (era de teste completa, sementes 1, 2, 3 e 42). Na versão 0.1, todos os reinos passavam fome por causas das regras e não dos bots.
+
+| Problema na 0.1 | Ajuste na 0.2 | Seção |
+|---|---|---|
+| A primeira colheita chegava com 42 horas, e o estoque inicial durava cerca de 18 | Safras desencontradas no início da era (capital 70%, floresta 45%, demais 20% do ciclo) | 5.3 |
+| Inverno inviável: com 40% de colheita faltavam cerca de 10.000 de comida por estação, acima de qualquer teto de estoque | Colheita de inverno de 70%, e o celeiro passa a somar +1.000 de capacidade de comida por nível | 2.2, 4.2, 6 |
+| Crescimento exigia comida para 7 dias, acima do teto de 2.000 | Comida para 3 dias e sem fome relevante nas últimas 24 horas | 5.5 |
+| Impasse: sem comida, a caravana para comprar comida não saía | A caravana paga 2 ouro por trecho quando falta comida | 8.2 |
+
+Resultado da segunda rodada, nas mesmas quatro sementes: as horas com mais de 50% de fome caíram de 160 a 240 por reino na era para 0 a 16 (só no inverno, e quase todas no reino em guerra). As revoltas caíram de 6 ou 7 por era para 1. A população de cada reino, que começa com 6.500, terminou a era entre 6.300 (o mercador, que perdeu uma província) e 10.800. O conquistador passou a vencer as quatro eras, sempre anexando 1 província do mercador. Isso ainda não prova uma estratégia dominante, porque o mapa é fixo e há só três bots, mas é o próximo ponto a observar.
+
